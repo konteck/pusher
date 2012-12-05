@@ -91,13 +91,14 @@ namespace Pusher {
         picojson::parse(v, response, response + strlen(response), &err);
 
         if (!err.empty()) {
-            cerr << err << endl;
+            cerr << "JSON Error: " << err << endl;
+            cerr << response << endl;
 
             return false;
         }
 
-//        object json = v.get<object>();
-//        cout << v << endl;
+        object json = v.get<object>();
+        cout << v << endl;
 
         return true;
     }
