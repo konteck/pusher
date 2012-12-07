@@ -5,9 +5,9 @@ using namespace std;
 using namespace picojson;
 
 namespace Pusher {
-    const string GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
+    const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
 
-    static int writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
+    static unsigned long writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {
         // Is there anything in the buffer?
         if(buffer_in != NULL) {
@@ -40,13 +40,13 @@ namespace Pusher {
         if (curl) {
             // Now set up all of the curl options
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
-            curl_easy_setopt(curl, CURLOPT_URL, GCM_PUSH_URL.c_str());
+            curl_easy_setopt(curl, CURLOPT_URL, GCM_PUSH_URL);
             curl_easy_setopt(curl, CURLOPT_HEADER, 0);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writer);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);\
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
             curl_easy_setopt(curl, CURLOPT_POST, true);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
@@ -82,9 +82,15 @@ namespace Pusher {
         req_json["registration_ids"] = * new value(devices_arr);
         req_json["data"] = * new value(data_obj);
         value req(req_json);
-
-        const char* response = gcm_req(api_key, req.serialize()).c_str();
         
+        const char* response;
+        
+        try {
+            response = gcm_req(api_key, req.serialize()).c_str();
+        } catch(exception& e) {
+            cerr << "Request error: " << e.what() << endl;
+        }
+
         return true;
 
         // Process response
