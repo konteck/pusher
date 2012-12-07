@@ -17,3 +17,4 @@
 *.xcodeproj
 .svn
 pusher
+Debug

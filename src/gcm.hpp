@@ -84,6 +84,8 @@ namespace Pusher {
         value req(req_json);
 
         const char* response = gcm_req(api_key, req.serialize()).c_str();
+        
+        return true;
 
         // Process response
         picojson::value v;

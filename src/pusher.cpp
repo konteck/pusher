@@ -34,8 +34,6 @@ void SaveToMongo(DBClientConnection* con, string db, string collection, const st
 }
 
 void* doWork(void* ctx) {
-    double start;
-
     string mongo_host = CONFIG["mongodb"].get<object>()["host"].to_str();
     string mongo_port = CONFIG["mongodb"].get<object>()["port"].to_str();
     string mongo_db = CONFIG["mongodb"].get<object>()["db"].to_str();
@@ -45,7 +43,7 @@ void* doWork(void* ctx) {
     mongo_conn.connect(mongo_host + ":" + mongo_port);
 
     zmq::context_t* context = reinterpret_cast<zmq::context_t*>(ctx);
-    zmq::socket_t socket(*context, ZMQ_PULL);
+    zmq::socket_t socket(*context, ZMQ_REP);
     socket.connect("inproc://workers");
 
     zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } };
@@ -73,9 +71,7 @@ void* doWork(void* ctx) {
             parse(push, json_str, json_str + strlen(json_str), &err);
 
             if (!err.empty()) {
-                std::cerr << "Request JSON Parse Error: " << err << " " << json_str << std::endl;
-
-                continue;
+                throw string("Request JSON Parse Error: " + err + " " + json_str);
             }
 
             object JSON = push.get<object>();
