@@ -45,12 +45,16 @@ void* doWork(void* ctx) {
     mongo_conn.connect(mongo_host + ":" + mongo_port);
 
     zmq::context_t* context = reinterpret_cast<zmq::context_t*>(ctx);
-    zmq::socket_t socket(*context, ZMQ_REP);
+    zmq::socket_t socket(*context, ZMQ_PULL);
     socket.connect("inproc://workers");
 
     zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } };
 
     while(true) {
+        stringstream log;
+        object response;
+        double start;
+        
         try {
             if(zmq_poll(items, 1, -1) < 1) {
                 cout << "Terminating worker" << endl;
@@ -58,7 +62,7 @@ void* doWork(void* ctx) {
             }
 
             zmq::message_t request;
-            socket.recv(&request, ZMQ_DONTWAIT);
+            socket.recv(&request);
 
             start = timer();
 
@@ -69,7 +73,7 @@ void* doWork(void* ctx) {
             parse(push, json_str, json_str + strlen(json_str), &err);
 
             if (!err.empty()) {
-                std::cerr << "Request: " << err << std::endl;
+                std::cerr << "Request JSON Parse Error: " << err << " " << json_str << std::endl;
 
                 continue;
             }
@@ -98,58 +102,70 @@ void* doWork(void* ctx) {
             }
 
             // Response back
-            object tmp;
-            tmp.insert(std::make_pair ("status", * new value(status ? "success" : "error")));
-            value resp(tmp);
-
-            string resp_text = resp.serialize();
-            zmq::message_t reply(resp_text.size());
-            memcpy (reply.data(), resp_text.c_str(), resp_text.size());
-            socket.send(reply);
+            response.insert(std::make_pair ("status", * new value(status ? "success" : "error")));
 
             // Log
-            stringstream log;
             time_t now = time(0);
             tm *ltm = std::localtime(&now);
 
             log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
             << (status ? "success" : "error") << " " << request.size() << "b "
             << " \t" << timer(start) << "s";
-
-            cout << log.str() << endl;
-
-            LOGS.push_back(log.str());
         } catch(string e) {
-            // Image format incorrect
-            object tmp;
-            tmp.insert(std::make_pair ("status", * new value("error")));
-            tmp.insert(std::make_pair ("message", * new value(e)));
-            value resp(tmp);
-
-            string resp_text = resp.serialize();
-            zmq::message_t reply(resp_text.size());
-            memcpy (reply.data(), resp_text.c_str(), resp_text.size());
-            socket.send(reply);
-
+            response.insert(std::make_pair ("status", * new value("error")));
+            response.insert(std::make_pair ("message", * new value(e)));
+            
             // Log
-            stringstream log;
             time_t now = time(0);
             tm *ltm = std::localtime(&now);
-
+            
             log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
             << e
             << " \t" << timer(start) << "s";
-
-            cerr << log.str() << endl;
-
-            LOGS.push_back(log.str());
         } catch(const zmq::error_t& e) {
-            cerr << "ZeroMQ Worker: " << e.what() << endl;
+            response.insert(std::make_pair ("status", * new value("error")));
+            response.insert(std::make_pair ("message", * new value(e.what())));
+            
+            // Log
+            time_t now = time(0);
+            tm *ltm = std::localtime(&now);
+            
+            log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+            << "ZeroMQ Worker: " << e.what()
+            << " \t" << timer(start) << "s";
         } catch(const mongo::DBException &e) {
-            cerr << "MongoDB: " << e.what() << endl;
+            response.insert(std::make_pair ("status", * new value("error")));
+            response.insert(std::make_pair ("message", * new value(e.what())));
+            
+            // Log
+            time_t now = time(0);
+            tm *ltm = std::localtime(&now);
+            
+            log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+            << "MongoDB: " << e.what()
+            << " \t" << timer(start) << "s";
         } catch(exception& e) {
-            cerr << "Fatal error: " << e.what() << endl;
+            response.insert(std::make_pair ("status", * new value("error")));
+            response.insert(std::make_pair ("message", * new value(e.what())));
+            
+            // Log
+            time_t now = time(0);
+            tm *ltm = std::localtime(&now);
+            
+            log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+            << "Fatal error: " << e.what()
+            << " \t" << timer(start) << "s";
         }
+        
+        value resp(response);
+        string resp_text = resp.serialize();
+        zmq::message_t reply(resp_text.size());
+        memcpy (reply.data(), resp_text.c_str(), resp_text.size());
+        socket.send(reply);
+        
+        cout << log.str() << endl;
+        
+        LOGS.push_back(log.str());
     }
 
     zmq_close(socket);

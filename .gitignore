@@ -14,5 +14,6 @@
 
 .idea
 *.iml
+*.xcodeproj
 .svn
 pusher
