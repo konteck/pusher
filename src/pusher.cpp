@@ -5,6 +5,7 @@
 #include "web++.hpp"
 
 #include "gcm.hpp"
+#include "apns.hpp"
 
 using namespace std;
 using namespace mongo;
@@ -157,7 +158,7 @@ void* doWork(void* ctx) {
         string resp_text = resp.serialize();
         zmq::message_t reply(resp_text.size());
         memcpy (reply.data(), resp_text.c_str(), resp_text.size());
-        socket.send(reply);
+        //socket.send(reply);
         
         cout << log.str() << endl;
         
@@ -262,6 +263,7 @@ void* run(void* arg) {
     CONFIG = v.get<object>();
 
     string uri = CONFIG["zeromq"].get<object>()["uri"].to_str();
+    cout << uri << endl;
     string workers_count = CONFIG["zeromq"].get<object>()["workers_count"].to_str();
     start_queue(uri, workers_count);
 }
@@ -278,20 +280,20 @@ void web_interface(WPP::Request* req, WPP::Response* res) {
 }
 
 int main(int argc, const char* argv[]) {
-    pthread_t main;
+//    pthread_t main;
 
-    int rc = pthread_create (&main, NULL, &run, NULL);
-    assert (rc == 0);
+//    int rc = pthread_create (&main, NULL, &run, NULL);
+//    assert (rc == 0);
 
-//    run();
+    run(NULL);
 
-    try {
-        WPP::Server server;
-        server.get("/", &web_interface);
-        server.start(5000);
-    } catch(WPP::Exception e) {
-        cerr << "WebServer: " << e.what() << endl;
-    }
+//    try {
+//        WPP::Server server;
+//        server.get("/", &web_interface);
+//        server.start(5000);
+//    } catch(WPP::Exception e) {
+//        cerr << "WebServer: " << e.what() << endl;
+//    }
 
     return EXIT_SUCCESS;
 }
