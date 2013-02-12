@@ -188,8 +188,10 @@ void* ThreadWorker(void* args) {
 //        sleep(2);
 //        
 //        cout << json_str << endl;
-//        
-//        return NULL;
+//
+        
+        //cout << getpid() << " " << strlen(json_str) << endl;
+        //return NULL;
         
         value push;
         std::string err;
@@ -230,7 +232,7 @@ void* ThreadWorker(void* args) {
         tm *ltm = std::localtime(&now);
         
         log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
-        << (status ? "success" : "error") << " " << sizeof(json_str) << "b "
+        << "[" << (unsigned long)pthread_self() << "] " << (status ? "success" : "error") << " " << strlen(json_str) << "b "
         << " \t" << timer(start) << "s";
     } catch(string e) {
         response.insert(std::make_pair ("status", * new value("error")));
@@ -381,7 +383,7 @@ int main(int argc, const char* argv[]) {
 
 //    int rc = pthread_create (&main, NULL, &run, NULL);
 //    assert (rc == 0);
-
+    
     run(NULL);
 
 //    try {
