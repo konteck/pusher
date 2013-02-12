@@ -13,7 +13,7 @@ using namespace picojson;
 
 object CONFIG;
 std::deque<std::string> LOGS;
-DBClientConnection mongo_conn;
+DBClientConnection* mongo_conn = new DBClientConnection(true, NULL, NULL);
 string mongo_host;
 string mongo_port;
 string mongo_db;
@@ -221,7 +221,7 @@ void* ThreadWorker(void* args) {
                 status = false;
             }
             
-            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
+            SaveToMongo(mongo_conn, mongo_db, mongo_collection, data.str());
         }
         
         // Response back
@@ -333,7 +333,7 @@ void* run(void* arg) {
     
     try {
         socket.bind(uri.c_str());
-        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        mongo_conn->connect(mongo_host + ":" + mongo_port);
         
         /////////-----
         //        DBClientConnection mongo_conn;
