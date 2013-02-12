@@ -5,7 +5,7 @@
 #include "web++.hpp"
 
 #include "gcm.hpp"
-#include "apns.hpp"
+//#include "apns.hpp"
 
 using namespace std;
 using namespace mongo;
@@ -13,6 +13,11 @@ using namespace picojson;
 
 object CONFIG;
 std::deque<std::string> LOGS;
+DBClientConnection mongo_conn;
+string mongo_host;
+string mongo_port;
+string mongo_db;
+string mongo_collection;
 
 double timer() {
     struct timeval tv;
@@ -34,21 +39,17 @@ void SaveToMongo(DBClientConnection* con, string db, string collection, const st
     con->insert(db + "." + collection, b);
 }
 
+/*
 void* doWork(void* ctx) {
-    string mongo_host = CONFIG["mongodb"].get<object>()["host"].to_str();
-    string mongo_port = CONFIG["mongodb"].get<object>()["port"].to_str();
-    string mongo_db = CONFIG["mongodb"].get<object>()["db"].to_str();
-    string mongo_collection = CONFIG["mongodb"].get<object>()["collection"].to_str();
-
     DBClientConnection mongo_conn;
     mongo_conn.connect(mongo_host + ":" + mongo_port);
-
+    
     zmq::context_t* context = reinterpret_cast<zmq::context_t*>(ctx);
     zmq::socket_t socket(*context, ZMQ_REP);
     socket.connect("inproc://workers");
-
+    
     zmq_pollitem_t items[1] = { { socket, 0, ZMQ_POLLIN, 0 } };
-
+    
     while(true) {
         stringstream log;
         object response;
@@ -59,52 +60,52 @@ void* doWork(void* ctx) {
                 cout << "Terminating worker" << endl;
                 break;
             }
-
+            
             zmq::message_t request;
             socket.recv(&request);
-
+            
             start = timer();
-
+            
             char* json_str = (char*) request.data();
-
+            
             value push;
             std::string err;
             parse(push, json_str, json_str + strlen(json_str), &err);
-
+            
             if (!err.empty()) {
                 throw string("Request JSON Parse Error: " + err + " " + json_str);
             }
-
+            
             object JSON = push.get<object>();
             bool status = true;
-
+            
             if(JSON["gcm"].is<object>()) {
                 string api_key = CONFIG["gcm"].get<object>()["api_key"].to_str();
-
+                
                 vector<value> pDevices = JSON["gcm"].get<object>()["devices"].get<array>();
                 vector<string> devices;
-
+                
                 for(int i = 0; i < pDevices.size(); i++) {
                     devices.push_back(pDevices[i].to_str());
                 }
-
+                
                 stringstream data;
                 data << JSON["gcm"].get<object>()["data"];
-
+                
                 if(!Pusher::gcm_send(api_key, devices, data.str())) {
                     status = false;
                 }
-
+                
                 SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
             }
-
+            
             // Response back
             response.insert(std::make_pair ("status", * new value(status ? "success" : "error")));
-
+            
             // Log
             time_t now = time(0);
             tm *ltm = std::localtime(&now);
-
+            
             log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
             << (status ? "success" : "error") << " " << request.size() << "b "
             << " \t" << timer(start) << "s";
@@ -164,78 +165,130 @@ void* doWork(void* ctx) {
         
         LOGS.push_back(log.str());
     }
-
+    
     zmq_close(socket);
+    
+    return NULL;
 }
+*/
 
-void start_queue(string uri, string workers_count) {
+void* ThreadWorker(void* args) {
+    stringstream log;
+    object response;
+    double start;
+    
+//    DBClientConnection mongo_conn;
+//    mongo_conn.connect(mongo_host + ":" + mongo_port);
+    
     try {
-        zmq::context_t context(1);
-        zmq::socket_t clients(context, ZMQ_ROUTER);
-        clients.bind(uri.c_str());
-
-        zmq::socket_t workers(context, ZMQ_DEALER);
-        workers.bind("inproc://workers");
-
-        int WORKERS_COUNT;
-
-        if(workers_count == "auto") {
-             WORKERS_COUNT = sysconf(_SC_NPROCESSORS_ONLN); // numCPU
-        } else {
-             WORKERS_COUNT = atoi(workers_count.c_str());
+        start = timer();
+        
+        char* json_str = (char*)args;
+        
+//        sleep(2);
+//        
+//        cout << json_str << endl;
+//        
+//        return NULL;
+        
+        value push;
+        std::string err;
+        parse(push, json_str, json_str + strlen(json_str), &err);
+        
+        if (!err.empty()) {
+            throw string("Request JSON Parse Error: " + err + " " + json_str);
         }
-
-        pthread_t worker;
-
-        for(int i = 0; i < WORKERS_COUNT; ++i) {
-             int rc = pthread_create (&worker, NULL, &doWork, &context);
-             assert (rc == 0);
-        }
-
-        const int NR_ITEMS = 2;
-        zmq_pollitem_t items[NR_ITEMS] =
-        {
-            { clients, 0, ZMQ_POLLIN, 0 },
-            { workers, 0, ZMQ_POLLIN, 0 }
-        };
-
-        while(true)
-        {
-            zmq_poll(items, NR_ITEMS, -1);
-
-            if(items[0].revents & ZMQ_POLLIN) {
-                int more; size_t sockOptSize = sizeof(int);
-
-                do {
-                    zmq::message_t msg;
-                    clients.recv(&msg);
-                    clients.getsockopt(ZMQ_RCVMORE, &more, &sockOptSize);
-
-                    workers.send(msg, more ? ZMQ_SNDMORE : ZMQ_DONTWAIT);
-                } while(more);
+        
+        object JSON = push.get<object>();
+        bool status = true;
+        
+        if(JSON["gcm"].is<object>()) {
+            string api_key = CONFIG["gcm"].get<object>()["api_key"].to_str();
+            
+            vector<value> pDevices = JSON["gcm"].get<object>()["devices"].get<array>();
+            vector<string> devices;
+            
+            for(int i = 0; i < pDevices.size(); i++) {
+                devices.push_back(pDevices[i].to_str());
             }
-
-            if(items[1].revents & ZMQ_POLLIN) {
-                int more; size_t sockOptSize = sizeof(int);
-
-                do {
-                    zmq::message_t msg;
-                    workers.recv(&msg);
-                    workers.getsockopt(ZMQ_RCVMORE, &more, &sockOptSize);
-
-                    clients.send(msg, more ? ZMQ_SNDMORE : ZMQ_DONTWAIT);
-                } while(more);
+            
+            stringstream data;
+            data << JSON["gcm"].get<object>()["data"];
+            
+            if(!Pusher::gcm_send(api_key, devices, data.str())) {
+                status = false;
             }
+            
+            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
         }
-
-        zmq_close(clients);
-        zmq_close(workers);
-        zmq_term(context);
-        pthread_join(worker, NULL);
+        
+        // Response back
+        response.insert(std::make_pair ("status", * new value(status ? "success" : "error")));
+        
+        // Log
+        time_t now = time(0);
+        tm *ltm = std::localtime(&now);
+        
+        log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+        << (status ? "success" : "error") << " " << sizeof(json_str) << "b "
+        << " \t" << timer(start) << "s";
+    } catch(string e) {
+        response.insert(std::make_pair ("status", * new value("error")));
+        response.insert(std::make_pair ("message", * new value(e)));
+        
+        // Log
+        time_t now = time(0);
+        tm *ltm = std::localtime(&now);
+        
+        log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+        << e
+        << " \t" << timer(start) << "s";
+    } catch(const zmq::error_t& e) {
+        response.insert(std::make_pair ("status", * new value("error")));
+        response.insert(std::make_pair ("message", * new value(e.what())));
+        
+        // Log
+        time_t now = time(0);
+        tm *ltm = std::localtime(&now);
+        
+        log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+        << "ZeroMQ Worker: " << e.what()
+        << " \t" << timer(start) << "s";
+    } catch(const mongo::DBException &e) {
+        response.insert(std::make_pair ("status", * new value("error")));
+        response.insert(std::make_pair ("message", * new value(e.what())));
+        
+        // Log
+        time_t now = time(0);
+        tm *ltm = std::localtime(&now);
+        
+        log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+        << "MongoDB: " << e.what()
+        << " \t" << timer(start) << "s";
+    } catch(exception& e) {
+        response.insert(std::make_pair ("status", * new value("error")));
+        response.insert(std::make_pair ("message", * new value(e.what())));
+        
+        // Log
+        time_t now = time(0);
+        tm *ltm = std::localtime(&now);
+        
+        log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
+        << "Fatal error: " << e.what()
+        << " \t" << timer(start) << "s";
     }
-    catch(const zmq::error_t& e) {
-       cerr << "ZeroMQ: " << e.what() << endl;
-    }
+    
+    //value resp(response);
+    //string resp_text = resp.serialize();
+    //zmq::message_t reply(resp_text.size());
+    //memcpy (reply.data(), resp_text.c_str(), resp_text.size());
+    //socket.send(reply);
+    
+    cout << log.str() << endl;
+    
+    LOGS.push_back(log.str());
+    
+    return NULL;
 }
 
 void* run(void* arg) {
@@ -263,11 +316,54 @@ void* run(void* arg) {
     CONFIG = v.get<object>();
 
     string uri = CONFIG["zeromq"].get<object>()["uri"].to_str();
+    mongo_host = CONFIG["mongodb"].get<object>()["host"].to_str();
+    mongo_port = CONFIG["mongodb"].get<object>()["port"].to_str();
+    mongo_db = CONFIG["mongodb"].get<object>()["db"].to_str();
+    mongo_collection = CONFIG["mongodb"].get<object>()["collection"].to_str();
+        
+    pthread_t workers;
+    zmq::context_t context(1);
+    zmq::message_t request;
+    zmq::socket_t socket(context, ZMQ_PULL);
+    
+    // Print 0MQ URI
     cout << uri << endl;
-    string workers_count = CONFIG["zeromq"].get<object>()["workers_count"].to_str();
-    start_queue(uri, workers_count);
+    
+    try {
+        socket.bind(uri.c_str());
+        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        
+        /////////-----
+        //        DBClientConnection mongo_conn;
+        //        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        
+        while(true) {
+            if(socket.recv(&request) > 0) { //ZMQ_NOBLOCK
+                char* data = (char*) request.data();
+                
+                void *copy = operator new(request.size());
+                memcpy(copy, data, request.size());
+                
+                pthread_create(&workers, NULL, &ThreadWorker, copy);
+            }
+            
+            usleep(10 * 1000);
+        }
+    }
+    catch(const zmq::error_t& e) {
+        cerr << "ZeroMQ: " << e.what() << endl;
+    }
+    catch(exception& e) {
+        cerr << "MainThread Exception: " << e.what() << endl;
+    }
+    
+    zmq_close(socket);
+    zmq_term(context);
+    pthread_join(workers, NULL);
+    
+    return NULL;
 }
-
+/*
 void web_interface(WPP::Request* req, WPP::Response* res) {
     array tmp;
     for (int i = 0; i < LOGS.size(); i++) {
@@ -278,6 +374,7 @@ void web_interface(WPP::Request* req, WPP::Response* res) {
     res->type = "application/json";
     res->body << resp.serialize().c_str();
 }
+*/
 
 int main(int argc, const char* argv[]) {
 //    pthread_t main;

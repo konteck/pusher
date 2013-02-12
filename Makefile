@@ -2,7 +2,7 @@ CPP = g++
 SRC = src/pusher.cpp
 OUT = pusher
 CPPFLAGS = # -O2 -Wall
-LDFLAGS = -lzmq -lcurl -lmongoclient -lboost_system-mt -lboost_thread-mt -lboost_filesystem-mt
+LDFLAGS = -lssl -lcrypto -lzmq -lcurl -lmongoclient -lboost_system-mt -lboost_thread-mt -lboost_filesystem-mt
 
 all: build run
 

@@ -7,7 +7,7 @@ using namespace picojson;
 namespace Pusher {
     const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
 
-    static unsigned long writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
+    static unsigned long gcm_writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {
         // Is there anything in the buffer?
         if(buffer_in != NULL) {
@@ -43,7 +43,8 @@ namespace Pusher {
             curl_easy_setopt(curl, CURLOPT_URL, GCM_PUSH_URL);
             curl_easy_setopt(curl, CURLOPT_HEADER, 0);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writer);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, gcm_writer
+                             );
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -59,7 +60,7 @@ namespace Pusher {
         }
 
         if(res != CURLE_OK) {
-            cerr << "CURL error" << endl;
+            cerr << "CURL Error: " << curl_easy_strerror(res) << endl;
 
             return string();
         }
