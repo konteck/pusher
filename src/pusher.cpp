@@ -217,11 +217,11 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
+            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
+            
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
                 status = false;
             }
-            
-            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
         }
         
         // Response back
@@ -256,7 +256,7 @@ void* ThreadWorker(void* args) {
         log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
         << "ZeroMQ Worker: " << e.what()
         << " \t" << timer(start) << "s";
-    } catch(const mongo::DBException &e) {
+    } catch(const mongo::DBException& e) {
         response.insert(std::make_pair ("status", * new value("error")));
         response.insert(std::make_pair ("message", * new value(e.what())));
         
