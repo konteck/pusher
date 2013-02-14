@@ -178,8 +178,8 @@ void* ThreadWorker(void* args) {
     double start;
         
     try {
-//        DBClientConnection mongo_conn;
-//        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        DBClientConnection mongo_conn;
+        mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         start = timer();
         
@@ -217,7 +217,7 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
-            SaveToMongo(mongo_conn, mongo_db, mongo_collection, data.str());
+            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
             
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
                 status = false;
@@ -327,7 +327,6 @@ void* run(void* arg) {
     zmq::context_t context(1);
     zmq::message_t request;
     zmq::socket_t socket(context, ZMQ_PULL);
-    //socket.setsockopt(ZMQ_BACKLOG, "200", 3);
     
     // Print 0MQ URI
     cout << uri << endl;
