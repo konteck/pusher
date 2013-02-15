@@ -21,6 +21,7 @@ namespace QPP {
     class Queue {
     public:
         Queue(int workers_count);
+        ~Queue();
         void add_job(void* (*callback)(void*));
         void add_job(void* (*callback)(void*),void*);
         void start();
@@ -43,7 +44,7 @@ namespace QPP {
             
             try {
                 for(int i = 0; i < cls->workers_count; i++) {
-                    if(workers[i] == NULL || pthread_kill(workers[i], 0) != 0) {
+                    if(!workers[i] || pthread_kill(workers[i], 0) != 0) {
                         pthread_mutex_lock(&lock);
                         if(cls->jobs_queue.size() > 0) {
                             Job job = cls->jobs_queue.front();
@@ -55,7 +56,7 @@ namespace QPP {
                         }
                         pthread_mutex_unlock(&lock);
                     } else { // still running
-                        active_threads++;
+                        //active_threads++;
                     
                         //cout << "Active thread" << endl;
                     }
@@ -64,7 +65,7 @@ namespace QPP {
                 cout << "Queue Error: " << e.what() << endl;
             }
             
-            usleep(500);
+            usleep(1000);
         }
         
         return NULL;
@@ -78,17 +79,21 @@ namespace QPP {
         }
     }
     
+    Queue::~Queue(){
+        pthread_mutex_destroy(&lock);
+    }
+    
     void Queue::add_job(void* (*callback)(void*)){
         this->add_job(callback, NULL);
-        
     }
     
     void Queue::add_job(void* (*callback)(void*), void* args){
-        pthread_mutex_lock(&lock);
-        this->jobs_queue.push_back({
+        Job j = {
             callback,
             args
-        });
+        };
+        pthread_mutex_lock(&lock);
+        this->jobs_queue.push_back(j);
         pthread_mutex_unlock(&lock);
     }
     

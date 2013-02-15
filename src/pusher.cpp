@@ -204,7 +204,7 @@ void* run(void* arg) {
         socket.bind(uri.c_str());
         mongo_conn->connect(mongo_host + ":" + mongo_port);
         
-        QPP:QPP::Queue jobs(workers_count);
+        QPP::Queue jobs(workers_count);
         jobs.start_nonblocking();
         
         /////////-----
@@ -223,7 +223,7 @@ void* run(void* arg) {
                 //pthread_create(&workers, NULL, &ThreadWorker, copy);
             }
             
-            usleep(5 * 1000);
+            usleep(1000);
         }
     }
     catch(const zmq::error_t& e) {
@@ -253,19 +253,6 @@ void web_interface(WPP::Request* req, WPP::Response* res) {
 */
 
 int main(int argc, const char* argv[]) {
-//    QPP:QPP::Queue jobs(3);
-//    jobs.start_nonblocking();
-//    
-//    for(int i = 0; i < 10; i++) {
-//        jobs.add_job(&wrk, &i);
-//    }
-//    
-//    sleep(20);
-//        
-//    cout << "END" << endl;
-        
-    //cout << "ENDX" << endl;
-    
     run(NULL);
 
 //    try {
