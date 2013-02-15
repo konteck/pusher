@@ -41,23 +41,27 @@ namespace QPP {
         while(true) { // !cls->jobs_queue.empty() || active_threads > 0
             active_threads = 0;
             
-            for(int i = 0; i < cls->workers_count; i++) {
-                if(workers[i] == NULL || pthread_kill(workers[i], 0) != 0) {
-                    pthread_mutex_lock(&lock);
-                    if(cls->jobs_queue.size() > 0) {
-                        Job job = cls->jobs_queue.front();
+            try {
+                for(int i = 0; i < cls->workers_count; i++) {
+                    if(workers[i] == NULL || pthread_kill(workers[i], 0) != 0) {
+                        pthread_mutex_lock(&lock);
+                        if(cls->jobs_queue.size() > 0) {
+                            Job job = cls->jobs_queue.front();
                         
-                        assert (pthread_create (&workers[i], NULL, job.callback, job.args) == 0);
-                        cls->jobs_queue.pop_front();
+                            assert (pthread_create (&workers[i], NULL, job.callback, job.args) == 0);
+                            cls->jobs_queue.pop_front();
                         
-                        //cout << (workers[0] == NULL) << endl;
-                    }
-                    pthread_mutex_unlock(&lock);
-                } else { // still running
-                    active_threads++;
+                            //cout << (workers[0] == NULL) << endl;
+                        }
+                        pthread_mutex_unlock(&lock);
+                    } else { // still running
+                        active_threads++;
                     
-                    //cout << "Active thread" << endl;
+                        //cout << "Active thread" << endl;
+                    }
                 }
+            } catch(exception& e) {
+                cout << "Queue Error: " << e.what() << endl;
             }
             
             usleep(500);

@@ -46,8 +46,8 @@ void* ThreadWorker(void* args) {
     double start;
         
     try {
-        DBClientConnection mongo_conn;
-        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        //DBClientConnection mongo_conn;
+        //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         start = timer();
         
@@ -85,7 +85,7 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
-            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
+            SaveToMongo(mongo_conn, mongo_db, mongo_collection, data.str());
             
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
                 status = false;
@@ -186,6 +186,7 @@ void* run(void* arg) {
     CONFIG = v.get<object>();
 
     string uri = CONFIG["zeromq"].get<object>()["uri"].to_str();
+    int workers_count = std::atoi(CONFIG["zeromq"].get<object>()["workers_count"].to_str().c_str());
     mongo_host = CONFIG["mongodb"].get<object>()["host"].to_str();
     mongo_port = CONFIG["mongodb"].get<object>()["port"].to_str();
     mongo_db = CONFIG["mongodb"].get<object>()["db"].to_str();
@@ -203,8 +204,8 @@ void* run(void* arg) {
         socket.bind(uri.c_str());
         mongo_conn->connect(mongo_host + ":" + mongo_port);
         
-        QPP:QPP::Queue jobs(20);
-        //jobs.start_nonblocking();
+        QPP:QPP::Queue jobs(workers_count);
+        jobs.start_nonblocking();
         
         /////////-----
         //DBClientConnection mongo_conn;
@@ -217,12 +218,12 @@ void* run(void* arg) {
                 void *copy = operator new(request.size());
                 memcpy(copy, data, request.size());
                 
-                //jobs.add_job(&ThreadWorker, copy);
+                jobs.add_job(&ThreadWorker, copy);
                 
-                pthread_create(&workers, NULL, &ThreadWorker, copy);
+                //pthread_create(&workers, NULL, &ThreadWorker, copy);
             }
             
-            usleep(10 * 1000);
+            usleep(5 * 1000);
         }
     }
     catch(const zmq::error_t& e) {
