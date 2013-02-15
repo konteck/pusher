@@ -6,7 +6,7 @@
 //  Copyright (c) 2013 Alex Movsisyan. All rights reserved.
 //
 
-#import <queue>
+#include <queue>
 
 using namespace std;
 
@@ -33,24 +33,24 @@ namespace QPP {
     
     void* Queue::run_loop(void* context){
         Queue* cls = (Queue*)context;
-                
-        //cout << cls->workers_count << endl;
-        
+                 
         int active_threads = 0;
         
         pthread_t workers[cls->workers_count];
-        
+                
         while(true) { // !cls->jobs_queue.empty() || active_threads > 0
             active_threads = 0;
             
             for(int i = 0; i < cls->workers_count; i++) {
-                if(pthread_kill(workers[i], 0) != 0) {
+                if(workers[i] == NULL || pthread_kill(workers[i], 0) != 0) {
                     pthread_mutex_lock(&lock);
                     if(cls->jobs_queue.size() > 0) {
                         Job job = cls->jobs_queue.front();
                         
                         assert (pthread_create (&workers[i], NULL, job.callback, job.args) == 0);
                         cls->jobs_queue.pop_front();
+                        
+                        //cout << (workers[0] == NULL) << endl;
                     }
                     pthread_mutex_unlock(&lock);
                 } else { // still running

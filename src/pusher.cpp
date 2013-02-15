@@ -55,7 +55,7 @@ void* ThreadWorker(void* args) {
         
         //sleep(1);
 //        
-//        cout << json_str << endl;
+        //cout << json_str << endl;
 //
         
         //cout << " " << json_str << endl;
@@ -204,7 +204,7 @@ void* run(void* arg) {
         mongo_conn->connect(mongo_host + ":" + mongo_port);
         
         QPP:QPP::Queue jobs(20);
-        jobs.start_nonblocking();
+        //jobs.start_nonblocking();
         
         /////////-----
         //DBClientConnection mongo_conn;
@@ -217,12 +217,12 @@ void* run(void* arg) {
                 void *copy = operator new(request.size());
                 memcpy(copy, data, request.size());
                 
-                jobs.add_job(&ThreadWorker, copy);
+                //jobs.add_job(&ThreadWorker, copy);
                 
-                //pthread_create(&workers, NULL, &ThreadWorker, copy);
+                pthread_create(&workers, NULL, &ThreadWorker, copy);
             }
             
-            //usleep(10 * 1000);
+            usleep(10 * 1000);
         }
     }
     catch(const zmq::error_t& e) {
