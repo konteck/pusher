@@ -49,7 +49,7 @@ namespace QPP {
                         if(cls->jobs_queue.size() > 0) {
                             Job job = cls->jobs_queue.front();
                         
-                            assert (pthread_create (&workers[i], NULL, job.callback, job.args) == 0);
+                            pthread_create (&workers[i], NULL, job.callback, job.args);
                             cls->jobs_queue.pop_front();
                         
                             //cout << (workers[0] == NULL) << endl;
@@ -62,6 +62,8 @@ namespace QPP {
                     }
                 }
             } catch(exception& e) {
+                pthread_mutex_unlock(&lock);
+                
                 cout << "Queue Error: " << e.what() << endl;
             }
             

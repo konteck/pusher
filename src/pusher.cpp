@@ -54,11 +54,7 @@ void* ThreadWorker(void* args) {
         char* json_str = (char*)args;
         
         //sleep(1);
-//        
         //cout << json_str << endl;
-//
-        
-        //cout << " " << json_str << endl;
         //return NULL;
         
         value push;
@@ -207,7 +203,6 @@ void* run(void* arg) {
         QPP::Queue jobs(workers_count);
         jobs.start_nonblocking();
         
-        /////////-----
         //DBClientConnection mongo_conn;
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
