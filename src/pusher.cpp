@@ -53,13 +53,13 @@ void* ThreadWorker(void* args) {
         
         char* json_str = (char*)args;
         
-        sleep(1);
+        //sleep(1);
 //        
 //        cout << json_str << endl;
 //
         
-        cout << " " << json_str << endl;
-        return NULL;
+        //cout << " " << json_str << endl;
+        //return NULL;
         
         value push;
         std::string err;
