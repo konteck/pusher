@@ -48,6 +48,8 @@ namespace Pusher {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
             curl_easy_setopt(curl, CURLOPT_POST, true);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
