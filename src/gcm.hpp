@@ -50,7 +50,9 @@ namespace Pusher {
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, true);
+            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, true); //mimic real world use
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, false);
 
             curl_easy_setopt(curl, CURLOPT_POST, true);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
