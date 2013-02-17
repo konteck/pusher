@@ -51,7 +51,7 @@ namespace QPP {
                         
                             pthread_create (&workers[i], NULL, job.callback, job.args);
                             cls->jobs_queue.pop_front();
-                        
+                            
                             //cout << (workers[0] == NULL) << endl;
                         }
                         pthread_mutex_unlock(&lock);

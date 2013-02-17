@@ -98,6 +98,8 @@ void* ThreadWorker(void* args) {
         log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
         << "[" << (unsigned long)pthread_self() << "] " << (status ? "success" : "error") << " " << strlen(json_str) << "b "
         << " \t" << timer(start) << "s";
+        
+        free(json_str);
     } catch(string e) {
         response.insert(std::make_pair ("status", * new value("error")));
         response.insert(std::make_pair ("message", * new value(e)));
@@ -207,11 +209,9 @@ void* run(void* arg) {
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         while(true) {
-            if(socket.recv(&request) > 0) { //ZMQ_NOBLOCK
-                char* data = (char*) request.data();
-                
+            if(socket.recv(&request) > 0) { //ZMQ_NOBLOCKb
                 void *copy = operator new(request.size());
-                memcpy(copy, data, request.size());
+                memcpy(copy, (char*) request.data(), request.size());
                 
                 jobs.add_job(&ThreadWorker, copy);
                 

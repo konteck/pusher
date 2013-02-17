@@ -41,15 +41,16 @@ namespace Pusher {
             // Now set up all of the curl options
             curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
             curl_easy_setopt(curl, CURLOPT_URL, GCM_PUSH_URL);
-            curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, gcm_writer
-                             );
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+            curl_easy_setopt(curl, CURLOPT_HEADER, false);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, true);
+            
+            //curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, gcm_writer);
+            //curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             
-            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, true);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
 
             curl_easy_setopt(curl, CURLOPT_POST, true);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
@@ -66,6 +67,10 @@ namespace Pusher {
 
             return string();
         }
+        
+        curl_global_cleanup();
+        
+        free(headers);
 
         return response;
     }
@@ -91,8 +96,10 @@ namespace Pusher {
         try {
             response = gcm_req(api_key, req.serialize()).c_str();
         } catch(exception& e) {
-            cerr << "Request error: " << e.what() << endl;
+            cerr << "CURL request error: " << e.what() << endl;
         }
+        
+        //cout << response << endl;
 
         return true;
 
