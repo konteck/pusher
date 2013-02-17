@@ -77,6 +77,10 @@ namespace Pusher {
 
     bool gcm_send(string api_key, vector<string> devices, string data) {
         // Prepare request
+        if(devices.size() == 0) {
+            return false;
+        }
+        
         array devices_arr;
 
         for(int i = 0; i < devices.size(); i++) {
