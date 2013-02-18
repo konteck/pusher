@@ -70,7 +70,7 @@ namespace Pusher {
             return string();
         }
         
-        free(headers);
+        delete headers;
 
         return response;
     }
@@ -101,6 +101,8 @@ namespace Pusher {
             response = gcm_req(api_key, req.serialize()).c_str();
         } catch(exception& e) {
             cerr << "Request error: " << e.what() << endl;
+        } catch (...) {
+            cout << "Request error" << endl;
         }
         
         //cout << response << endl;

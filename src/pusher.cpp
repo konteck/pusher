@@ -99,7 +99,7 @@ void* ThreadWorker(void* args) {
         << "[" << (unsigned long)pthread_self() << "] " << (status ? "success" : "error") << " " << strlen(json_str) << "b "
         << " \t" << timer(start) << "s";
         
-        free(json_str);
+        delete json_str;
     } catch(string e) {
         response.insert(std::make_pair ("status", * new value("error")));
         response.insert(std::make_pair ("message", * new value(e)));
@@ -144,6 +144,8 @@ void* ThreadWorker(void* args) {
         log << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " " << ltm->tm_mday << "/" << ltm->tm_mon << "] \t"
         << "Fatal error: " << e.what()
         << " \t" << timer(start) << "s";
+    } catch (...) {
+        cout << "Thread error" << endl;
     }
     
     //value resp(response);
@@ -154,7 +156,7 @@ void* ThreadWorker(void* args) {
     
     cout << log.str() << endl;
     
-    LOGS.push_back(log.str());
+    //LOGS.push_back(log.str());
     
     return NULL;
 }
@@ -226,6 +228,8 @@ void* run(void* arg) {
     }
     catch(exception& e) {
         cerr << "MainThread Exception: " << e.what() << endl;
+    } catch (...) {
+        cout << "MainThread Exception" << endl;
     }
     
     zmq_close(socket);

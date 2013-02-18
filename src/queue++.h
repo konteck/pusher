@@ -65,6 +65,10 @@ namespace QPP {
                 pthread_mutex_unlock(&lock);
                 
                 cout << "Queue Error: " << e.what() << endl;
+            } catch (...) {
+                pthread_mutex_unlock(&lock);
+                
+                cout << "Queue Error" << endl;
             }
             
             usleep(1000);
