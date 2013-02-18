@@ -71,7 +71,7 @@ namespace QPP {
                 cout << "Queue Error" << endl;
             }
             
-            usleep(1000);
+            usleep(700);
         }
         
         return NULL;
