@@ -14,8 +14,6 @@ using namespace picojson;
 
 object CONFIG;
 std::deque<std::string> LOGS;
-pthread_mutex_t lock;
-DBClientConnection mongo_conn;// = new DBClientConnection(true, NULL, 20);
 string mongo_host;
 string mongo_port;
 string mongo_db;
@@ -33,14 +31,6 @@ double timer(double start) {
     gettimeofday(&tv, NULL);
 
     return ((double) tv.tv_usec/1000000 + (double) tv.tv_sec) - start;
-}
-
-void SaveToMongo(DBClientConnection* con, string db, string collection, const string data) {
-    BSONObj b = mongo::fromjson(data);
-
-    pthread_mutex_lock(&lock);
-    con->insert(db + "." + collection, b);
-    pthread_mutex_unlock(&lock);
 }
 
 void* ThreadWorker(void* args) {
@@ -82,17 +72,8 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
-            //SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
-            
-            //ScopedDbConnection* conn = ScopedDbConnection::getScopedDbConnection(mongo_host + ":" + mongo_port);
             scoped_ptr<ScopedDbConnection> conn(ScopedDbConnection::getScopedDbConnection (mongo_host + ":" + mongo_port) );
-            
-            //BSONObj b = mongo::fromjson(data.str());
-            
-            //pthread_mutex_lock(&lock);
             conn->get()->insert(mongo_db + "." + mongo_collection, mongo::fromjson(data.str()));
-            //pthread_mutex_unlock(&lock);
-            
             conn->done();
             
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
@@ -170,8 +151,6 @@ void* ThreadWorker(void* args) {
     
     //LOGS.push_back(log.str());
     
-    pthread_exit(NULL);
-    
     return NULL;
 }
 
@@ -216,21 +195,13 @@ void* run(void* arg) {
     
     try {
         socket.bind(uri.c_str());
-        mongo_conn.connect(mongo_host + ":" + mongo_port);
+        //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         QPP::Queue jobs(workers_count);
         jobs.start_nonblocking();
         
-        if (pthread_mutex_init(&lock, NULL) != 0) {
-            cerr << "Mutex init failed" << endl;
-        }
-                
-        //DBClientConnection mongo_conn;
-        //mongo_conn.connect(mongo_host + ":" + mongo_port);
-        
         /* Must initialize libcurl before any threads are started */
         curl_global_init(CURL_GLOBAL_ALL);
-        
         Pusher::init_locks();
         
         while(true) {
@@ -243,7 +214,7 @@ void* run(void* arg) {
                 //pthread_create(&workers, NULL, &ThreadWorker, copy);
             }
             
-            usleep(3000);
+            usleep(1000);
         }
     }
     catch(const zmq::error_t& e) {
