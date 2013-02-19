@@ -15,7 +15,7 @@ using namespace picojson;
 object CONFIG;
 std::deque<std::string> LOGS;
 pthread_mutex_t lock;
-DBClientConnection* mongo_conn = new DBClientConnection(true, NULL, 20);
+DBClientConnection mongo_conn;// = new DBClientConnection(true, NULL, 20);
 string mongo_host;
 string mongo_port;
 string mongo_db;
@@ -82,7 +82,7 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
-            SaveToMongo(mongo_conn, mongo_db, mongo_collection, data.str());
+            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
             
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
                 status = false;
@@ -203,7 +203,7 @@ void* run(void* arg) {
     
     try {
         socket.bind(uri.c_str());
-        mongo_conn->connect(mongo_host + ":" + mongo_port);
+        mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         QPP::Queue jobs(workers_count);
         jobs.start_nonblocking();

@@ -6,6 +6,64 @@ using namespace picojson;
 
 namespace Pusher {
     const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
+    
+    /* struct containing data of a thread */
+    struct Tdata {
+        CURLSH *share;
+        char *url;
+    };
+    struct userdata {
+        char *text;
+        int counter;
+    };
+    /* lock callback */
+    void lock(CURL *handle, curl_lock_data data, curl_lock_access access,
+              void *useptr )
+    {
+        const char *what;
+        struct userdata *user = (struct userdata *)useptr;
+        (void)handle;
+        (void)access;
+        switch ( data ) {
+            case CURL_LOCK_DATA_SHARE:
+                what = "share";
+                break;
+            case CURL_LOCK_DATA_DNS:
+                what = "dns";
+                break;
+            case CURL_LOCK_DATA_COOKIE:
+                what = "cookie";
+                break;
+            default:
+                fprintf(stderr, "lock: no such data: %d\n", (int)data);
+                return;
+        }
+        printf("lock: %-6s <%s>: %d\n", what, user->text, user->counter);
+        user->counter++;
+    }
+    /* unlock callback */
+    void unlock(CURL *handle, curl_lock_data data, void *useptr )
+    {
+        const char *what;
+        struct userdata *user = (struct userdata *)useptr;
+        (void)handle;
+        switch ( data ) {
+            case CURL_LOCK_DATA_SHARE:
+                what = "share";
+                break;
+            case CURL_LOCK_DATA_DNS:
+                what = "dns";
+                break; 
+            case CURL_LOCK_DATA_COOKIE: 
+                what = "cookie"; 
+                break; 
+            default: 
+                fprintf(stderr, "unlock: no such data: %d\n", (int)data); 
+                return; 
+        } 
+        printf("unlock: %-6s <%s>: %d\n", what, user->text, user->counter); 
+        user->counter++; 
+    } 
 
     static unsigned long gcm_writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {
@@ -48,6 +106,9 @@ namespace Pusher {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            
+            curl_share_setopt(curl, CURLSHOPT_LOCKFUNC, lock);
+            curl_share_setopt(curl, CURLSHOPT_UNLOCKFUNC, unlock);
             
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, true);
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, true); //mimic real world use
