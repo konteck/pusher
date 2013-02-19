@@ -1,70 +1,61 @@
 #include "picojson.h"
 #include <curl/curl.h>
+#include <openssl/crypto.h>
+#include <pthread.h>
 
 using namespace std;
 using namespace picojson;
 
 namespace Pusher {
     const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
+    static pthread_mutex_t *lockarray;
     
-    /* struct containing data of a thread */
-    struct Tdata {
-        CURLSH *share;
-        char *url;
-    };
-    struct userdata {
-        char *text;
-        int counter;
-    };
-    /* lock callback */
-    void lock(CURL *handle, curl_lock_data data, curl_lock_access access,
-              void *useptr )
+    static void lock_callback(int mode, int type, const char *file, int line)
     {
-        const char *what;
-        struct userdata *user = (struct userdata *)useptr;
-        (void)handle;
-        (void)access;
-        switch ( data ) {
-            case CURL_LOCK_DATA_SHARE:
-                what = "share";
-                break;
-            case CURL_LOCK_DATA_DNS:
-                what = "dns";
-                break;
-            case CURL_LOCK_DATA_COOKIE:
-                what = "cookie";
-                break;
-            default:
-                fprintf(stderr, "lock: no such data: %d\n", (int)data);
-                return;
+        (void)file;
+        (void)line;
+        if (mode & CRYPTO_LOCK) {
+            pthread_mutex_lock(&(lockarray[type]));
         }
-        printf("lock: %-6s <%s>: %d\n", what, user->text, user->counter);
-        user->counter++;
+        else {
+            pthread_mutex_unlock(&(lockarray[type]));
+        }
     }
-    /* unlock callback */
-    void unlock(CURL *handle, curl_lock_data data, void *useptr )
+    
+    static unsigned long thread_id(void)
     {
-        const char *what;
-        struct userdata *user = (struct userdata *)useptr;
-        (void)handle;
-        switch ( data ) {
-            case CURL_LOCK_DATA_SHARE:
-                what = "share";
-                break;
-            case CURL_LOCK_DATA_DNS:
-                what = "dns";
-                break; 
-            case CURL_LOCK_DATA_COOKIE: 
-                what = "cookie"; 
-                break; 
-            default: 
-                fprintf(stderr, "unlock: no such data: %d\n", (int)data); 
-                return; 
-        } 
-        printf("unlock: %-6s <%s>: %d\n", what, user->text, user->counter); 
-        user->counter++; 
-    } 
-
+        unsigned long ret;
+        
+        ret=(unsigned long)pthread_self();
+        return(ret);
+    }
+    
+    static void init_locks(void)
+    {
+        int i;
+        
+        lockarray=(pthread_mutex_t *)OPENSSL_malloc(CRYPTO_num_locks() *
+                                                    sizeof(pthread_mutex_t));
+        for (i=0; i<CRYPTO_num_locks(); i++) {
+            pthread_mutex_init(&(lockarray[i]),NULL);
+        }
+        
+        CRYPTO_set_id_callback((unsigned long (*)())thread_id);
+        //CRYPTO_set_locking_callback(<#void (*func)(int, int, const char *, int)#>)
+        //CRYPTO_set_locking_callback((void (*)())lock_callback);
+    }
+    
+    static void kill_locks(void)
+    {
+        int i;
+        
+        CRYPTO_set_locking_callback(NULL);
+        for (i=0; i<CRYPTO_num_locks(); i++)
+            pthread_mutex_destroy(&(lockarray[i]));
+        
+        OPENSSL_free(lockarray);
+    }
+    
     static unsigned long gcm_writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {
         // Is there anything in the buffer?
@@ -107,8 +98,8 @@ namespace Pusher {
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             
-            curl_share_setopt(curl, CURLSHOPT_LOCKFUNC, lock);
-            curl_share_setopt(curl, CURLSHOPT_UNLOCKFUNC, unlock);
+            //curl_share_setopt(curl, CURLSHOPT_LOCKFUNC, lock);
+            //curl_share_setopt(curl, CURLSHOPT_UNLOCKFUNC, unlock);
             
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, true);
             curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, true); //mimic real world use
