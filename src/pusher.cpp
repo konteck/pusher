@@ -51,7 +51,7 @@ void* ThreadWorker(void* args) {
     try {
         //DBClientConnection mongo_conn;
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
-        
+                
         char* json_str = (char*)args;
         
         //sleep(1);
@@ -82,7 +82,16 @@ void* ThreadWorker(void* args) {
             stringstream data;
             data << JSON["gcm"].get<object>()["data"];
             
-            SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
+            //SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
+            
+            ScopedDbConnection* conn = ScopedDbConnection::getScopedDbConnection(mongo_host + ":" + mongo_port);
+            //BSONObj b = mongo::fromjson(data.str());
+            
+            //pthread_mutex_lock(&lock);
+            conn->get()->insert(mongo_db + "." + mongo_collection, mongo::fromjson(data.str()));
+            //pthread_mutex_unlock(&lock);
+            
+            conn->done();
             
             if(!Pusher::gcm_send(api_key, devices, data.str())) {
                 status = false;
