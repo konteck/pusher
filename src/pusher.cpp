@@ -212,6 +212,9 @@ void* run(void* arg) {
             cerr << "Mutex init failed" << endl;
         }
         
+        /* Must initialize libcurl before any threads are started */
+        curl_global_init(CURL_GLOBAL_ALL);
+        
         //DBClientConnection mongo_conn;
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
