@@ -14,6 +14,7 @@ using namespace picojson;
 
 object CONFIG;
 std::deque<std::string> LOGS;
+pthread_mutex_t lock;
 DBClientConnection* mongo_conn = new DBClientConnection(true, NULL, 20);
 string mongo_host;
 string mongo_port;
@@ -37,19 +38,19 @@ double timer(double start) {
 void SaveToMongo(DBClientConnection* con, string db, string collection, const string data) {
     BSONObj b = mongo::fromjson(data);
 
+    pthread_mutex_lock(&lock);
     con->insert(db + "." + collection, b);
+    pthread_mutex_unlock(&lock);
 }
 
 void* ThreadWorker(void* args) {
     stringstream log;
     object response;
-    double start;
+    double start = timer();
         
     try {
         //DBClientConnection mongo_conn;
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
-        
-        start = timer();
         
         char* json_str = (char*)args;
         
@@ -207,11 +208,15 @@ void* run(void* arg) {
         QPP::Queue jobs(workers_count);
         jobs.start_nonblocking();
         
+        if (pthread_mutex_init(&lock, NULL) != 0) {
+            cerr << "Mutex init failed" << endl;
+        }
+        
         //DBClientConnection mongo_conn;
         //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         while(true) {
-            if(socket.recv(&request) > 0) { //ZMQ_NOBLOCKb
+            if(socket.recv(&request) > 0) { //ZMQ_NOBLOCK
                 void *copy = operator new(request.size());
                 memcpy(copy, (char*) request.data(), request.size());
                 
