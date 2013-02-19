@@ -8,9 +8,22 @@ using namespace picojson;
 
 namespace Pusher {
     const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
+    
+    
+#define USE_OPENSSL
+    
+#include <stdio.h>
+#include <pthread.h>
+#include <curl/curl.h>
+    
+#define NUMT 4
+    
+    /* we have this global to let the callback get easy access to it */
     static pthread_mutex_t *lockarray;
     
-    static void lock_callback(int mode, int type, const char *file, int line)
+#ifdef USE_OPENSSL
+#include <openssl/crypto.h>
+    static void lock_callback2(int mode, int type, char *file, int line)
     {
         (void)file;
         (void)line;
@@ -30,6 +43,18 @@ namespace Pusher {
         return(ret);
     }
     
+    static void lock_callback(int mode, int type, const char* file, int line)
+    {
+        (void)file;
+        (void)line;
+        if (mode & CRYPTO_LOCK) {
+            pthread_mutex_lock(&(lockarray[type]));
+        }
+        else {
+            pthread_mutex_unlock(&(lockarray[type]));
+        }
+    }
+    
     static void init_locks(void)
     {
         int i;
@@ -41,8 +66,7 @@ namespace Pusher {
         }
         
         CRYPTO_set_id_callback((unsigned long (*)())thread_id);
-        //CRYPTO_set_locking_callback(<#void (*func)(int, int, const char *, int)#>)
-        //CRYPTO_set_locking_callback((void (*)())lock_callback);
+        CRYPTO_set_locking_callback(lock_callback);
     }
     
     static void kill_locks(void)
@@ -55,6 +79,10 @@ namespace Pusher {
         
         OPENSSL_free(lockarray);
     }
+#endif
+    
+    
+    
     
     static unsigned long gcm_writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {

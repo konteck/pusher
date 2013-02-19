@@ -211,12 +211,14 @@ void* run(void* arg) {
         if (pthread_mutex_init(&lock, NULL) != 0) {
             cerr << "Mutex init failed" << endl;
         }
+                
+        //DBClientConnection mongo_conn;
+        //mongo_conn.connect(mongo_host + ":" + mongo_port);
         
         /* Must initialize libcurl before any threads are started */
         curl_global_init(CURL_GLOBAL_ALL);
         
-        //DBClientConnection mongo_conn;
-        //mongo_conn.connect(mongo_host + ":" + mongo_port);
+        Pusher::init_locks();
         
         while(true) {
             if(socket.recv(&request) > 0) { //ZMQ_NOBLOCK
