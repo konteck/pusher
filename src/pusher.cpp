@@ -241,7 +241,7 @@ void* run(void* arg) {
                 //pthread_create(&workers, NULL, &ThreadWorker, copy);
             }
             
-            usleep(1000);
+            usleep(3000);
         }
     }
     catch(const zmq::error_t& e) {
