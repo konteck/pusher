@@ -12,11 +12,14 @@ using namespace std;
 
 namespace QPP {
     pthread_mutex_t lock;
+    pthread_mutex_t lock2;
     
     struct Job {
         void* (*callback)(void*);
         void* args;
     };
+    
+    queue<Job> jobs_queue2;
     
     class Queue {
     public:
@@ -46,15 +49,21 @@ namespace QPP {
             try {
                 for(int i = 0; i < cls->workers_count; i++) {
                     if(!workers[i] || pthread_kill(workers[i], 0) != 0) {
-                        pthread_mutex_lock(&lock);
-                        if(cls->jobs_queue.size() > 0) {
-                            Job job = cls->jobs_queue.front();
-                            cls->jobs_queue.pop_front();
+                        pthread_mutex_lock(&lock2);
+                        if(jobs_queue2.size() > 0) {
+                            Job job = jobs_queue2.front();
+                            jobs_queue2.pop();
+                            
+                            //pthread_t w;
+                            workers[i] = NULL;
                             
                             pthread_join(workers[i], NULL);
+                            pthread_detach(workers[i]);
                             pthread_create (&workers[i], NULL, job.callback, job.args);
+                            
+                           // cout << (char*)job.args << endl;
                         }
-                        pthread_mutex_unlock(&lock);
+                        pthread_mutex_unlock(&lock2);
                     } else { // still running
                         //active_threads++;
                     
@@ -71,7 +80,7 @@ namespace QPP {
                 cout << "Queue Error" << endl;
             }
             
-            usleep(1000);
+            usleep(2000);
         }
         
         return NULL;
@@ -81,6 +90,10 @@ namespace QPP {
         this->workers_count = workers_count;
         
         if (pthread_mutex_init(&lock, NULL) != 0) {
+            cout << "Mutex init failed" << endl;
+        }
+        
+        if (pthread_mutex_init(&lock2, NULL) != 0) {
             cout << "Mutex init failed" << endl;
         }
     }
@@ -98,9 +111,9 @@ namespace QPP {
             callback,
             args
         };
-        
         pthread_mutex_lock(&lock);
-        this->jobs_queue.push_back(j);
+        //cout << "Size: " << jobs_queue2.size() << endl;
+        jobs_queue2.push(j);
         pthread_mutex_unlock(&lock);
     }
     
