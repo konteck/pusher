@@ -19,7 +19,7 @@ namespace QPP {
         void* args;
     };
     
-    deque<Job> jobs_queue2;
+    queue<Job> jobs_queue2;
     
     class Queue {
     public:
@@ -51,7 +51,7 @@ namespace QPP {
                         pthread_mutex_lock(&lock2);
                         if(jobs_queue2.size() > 0) {
                             Job job = jobs_queue2.front();
-                            jobs_queue2.pop_front();
+                            jobs_queue2.pop();
                             
                             pthread_create (&workers[i], NULL, job.callback, job.args);
                             
@@ -106,7 +106,8 @@ namespace QPP {
             args
         };
         pthread_mutex_lock(&lock);
-        jobs_queue2.push_back(j);
+        cout << "Size: " << jobs_queue2.size() << endl;
+        jobs_queue2.push(j);
         pthread_mutex_unlock(&lock);
     }
     
