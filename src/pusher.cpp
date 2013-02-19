@@ -84,7 +84,9 @@ void* ThreadWorker(void* args) {
             
             //SaveToMongo(&mongo_conn, mongo_db, mongo_collection, data.str());
             
-            ScopedDbConnection* conn = ScopedDbConnection::getScopedDbConnection(mongo_host + ":" + mongo_port);
+            //ScopedDbConnection* conn = ScopedDbConnection::getScopedDbConnection(mongo_host + ":" + mongo_port);
+            scoped_ptr<ScopedDbConnection> conn(ScopedDbConnection::getScopedDbConnection (mongo_host + ":" + mongo_port) );
+            
             //BSONObj b = mongo::fromjson(data.str());
             
             //pthread_mutex_lock(&lock);
