@@ -58,7 +58,7 @@ void* ThreadWorker(void* args) {
         
         object JSON = push.get<object>();
         bool status = true;
-        
+             
         if(JSON["gcm"].is<object>()) {
             string api_key = CONFIG["gcm"].get<object>()["api_key"].to_str();
             
@@ -69,16 +69,28 @@ void* ThreadWorker(void* args) {
                 devices.push_back(pDevices[i].to_str());
             }
             
-            stringstream data;
-            data << JSON["gcm"].get<object>()["data"];
+            BSONObj p = mongo::fromjson(JSON["gcm"].get<object>()["data"].serialize());
+            BSONObjBuilder oB;
+            oB.genOID();
+            oB.appendElements(p);
+            //oB.appendNumber("id", 3333);
+            p = oB.obj();
             
+            BSONElement oid;
+            p.getObjectID(oid);
+            
+            JSON["gcm"].get<object>()["data"].get<object>().erase("id");
+            JSON["gcm"].get<object>()["data"].get<object>().insert(std::make_pair ("id", oid.__oid().toString()));
+                        
             scoped_ptr<ScopedDbConnection> conn(ScopedDbConnection::getScopedDbConnection (mongo_host + ":" + mongo_port) );
-            conn->get()->insert(mongo_db + "." + mongo_collection, mongo::fromjson(data.str()));
+            conn->get()->insert(mongo_db + "." + mongo_collection, p);
             conn->done();
             
-            if(!Pusher::gcm_send(api_key, devices, data.str())) {
+            if(!Pusher::gcm_send(api_key, devices, JSON["gcm"].get<object>()["data"].serialize())) {
                 status = false;
             }
+            
+            //cout << JSON["gcm"].get<object>()["data"].serialize() << endl << p.toString() << endl;
         }
         
         // Response back
@@ -222,7 +234,8 @@ void* run(void* arg) {
     }
     catch(exception& e) {
         cerr << "MainThread Exception: " << e.what() << endl;
-    } catch (...) {
+    }
+    catch (...) {
         cout << "MainThread Exception" << endl;
     }
     

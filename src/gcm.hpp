@@ -7,33 +7,9 @@ using namespace std;
 using namespace picojson;
 
 namespace Pusher {
-    const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";
-    
-    
-#define USE_OPENSSL
-    
-#include <stdio.h>
-#include <pthread.h>
-#include <curl/curl.h>
-    
-#define NUMT 4
-    
+    const char* GCM_PUSH_URL = "https://android.googleapis.com/gcm/send";    
     /* we have this global to let the callback get easy access to it */
     static pthread_mutex_t *lockarray;
-    
-#ifdef USE_OPENSSL
-#include <openssl/crypto.h>
-    static void lock_callback2(int mode, int type, char *file, int line)
-    {
-        (void)file;
-        (void)line;
-        if (mode & CRYPTO_LOCK) {
-            pthread_mutex_lock(&(lockarray[type]));
-        }
-        else {
-            pthread_mutex_unlock(&(lockarray[type]));
-        }
-    }
     
     static unsigned long thread_id(void)
     {
@@ -79,10 +55,6 @@ namespace Pusher {
         
         OPENSSL_free(lockarray);
     }
-#endif
-    
-    
-    
     
     static unsigned long gcm_writer(char *data, size_t size, size_t nmemb, std::string *buffer_in)
     {
@@ -126,11 +98,8 @@ namespace Pusher {
 
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             
-            //curl_share_setopt(curl, CURLSHOPT_LOCKFUNC, lock);
-            //curl_share_setopt(curl, CURLSHOPT_UNLOCKFUNC, unlock);
-            
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, true);
-            curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, true); //mimic real world use
+            //curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, true); //mimic real world use
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, false);
 
